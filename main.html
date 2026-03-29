@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="favicon.png" type="image/png">
+<title>Buyanov</title>
+<style>
+body {
+  margin: 0;
+  background: #000;
+  color: #fff;
+  font-family: 'Arial', sans-serif;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.quote-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 80%;
+}
+
+.quote-box {
+  display: flex;
+  flex-direction: column;
+  max-width: 600px;
+}
+
+.quote {
+  font-size: 1.8rem;
+  font-weight: bold;
+  line-height: 1.5;
+  letter-spacing: 0.5px;
+  white-space: pre-wrap;
+}
+
+.author {
+  font-size: 1.2rem;
+  font-weight: normal;
+  margin-top: 10px;
+  text-align: right;
+}
+
+.sticker {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  top: 0;
+  transition: top 0.1s ease;
+}
+.sticker img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 10px 20px;
+  letter-spacing: 0.5px;
+  transition: all 0.3s;
+}
+.btn:hover {
+  transform: scale(1.1);
+}
+
+.audio-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 30px;
+}
+#playBtnSmall {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+#playBtnSmall:hover {
+  transform: scale(1.2);
+}
+.icon-play, .icon-pause {
+  display: block;
+  width: 0;
+  height: 0;
+  border-style: solid;
+}
+.icon-play {
+  border-width: 12px 0 12px 20px;
+  border-color: transparent transparent transparent #fff;
+}
+.icon-pause {
+  width: 14px;
+  height: 20px;
+  position: relative;
+}
+.icon-pause::before,
+.icon-pause::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background: #fff;
+}
+.icon-pause::before { left: 0; }
+.icon-pause::after { right: 0; }
+
+#audioSlider {
+  width: 200px;
+  -webkit-appearance: none;
+  height: 3px;
+  background: #fff;
+  border-radius: 5px;
+  cursor: pointer;
+}
+#audioSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+}
+
+#timeDisplay {
+  font-size: 0.9rem;
+  width: 50px;
+  text-align: center;
+}
+
+.contacts {
+  position: absolute;
+  bottom: 20px;
+  display: flex;
+  gap: 20px;
+}
+.contact-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  text-decoration: none;
+  letter-spacing: 0.5px;
+  transition: all 0.3s;
+}
+.contact-btn:hover {
+  transform: scale(1.1);
+}
+</style>
+</head>
+<body>
+
+<div class="quote-container">
+  <div class="quote-box">
+    <div class="quote" id="quote"></div>
+    <div class="author" id="author">— Владимир Вольфович Жириновский</div>
+  </div>
+  <div class="sticker" id="sticker"><img id="stickerImg" src="zhirin_closed.png" alt="Жириновский"></div>
+</div>
+
+<div>
+  <button class="btn" id="translateBtn">Translate to English</button>
+</div>
+
+<div class="audio-container">
+  <button id="playBtnSmall"><span class="icon-play"></span></button>
+  <input type="range" id="audioSlider" value="0" min="0" step="0.01">
+  <div id="timeDisplay">0:00</div>
+</div>
+
+<div class="contacts">
+  <a target="_blank" class="contact-btn">Discord: buyanov8</a>
+</div>
+
+<audio id="audio" src="soldat.mp3"></audio>
+
+<script>
+const quoteEl = document.getElementById("quote");
+const authorEl = document.getElementById("author");
+const sticker = document.getElementById("sticker");
+const stickerImg = document.getElementById("stickerImg");
+const translateBtn = document.getElementById("translateBtn");
+
+const audio = document.getElementById("audio");
+const playBtnSmall = document.getElementById("playBtnSmall");
+const slider = document.getElementById("audioSlider");
+const timeDisplay = document.getElementById("timeDisplay");
+
+let isEnglish = false;
+let typingTimeout = null;
+
+const quotes = {
+  ru: "«Не надо заставлять детей учить английский. Пускай, лучше изучают автомат Калашникова. И тогда скоро весь мир заговорит по‑русски.»",
+  en: `"Don't force children to learn English. Let them better study the Kalashnikov rifle. Then soon the whole world will speak Russian."`
+};
+
+const authors = {
+  ru: "— Владимир Вольфович Жириновский",
+  en: "— Vladimir V. Zhirinovsky"
+};
+
+// Печать с паузами и движением стикера
+function typeQuote(text, author, index=0) {
+  if (index === 0) {
+    quoteEl.textContent = "";
+    authorEl.textContent = "";
+    sticker.style.top = "0px";
+  }
+  if (index < text.length) {
+    quoteEl.textContent += text[index];
+
+    // Стикер "вылезает из текста"
+    sticker.style.top = (index % 2 === 0 ? "-5px" : "0px");
+
+    // Меняем рот открытый/закрытый
+    stickerImg.src = stickerImg.src.includes("closed") ? "zhirin_open.png" : "zhirin_closed.png";
+
+    let delay = 50;
+    if (text[index] === ".") delay = 400;
+    else if (text[index] === ",") delay = 200;
+
+    typingTimeout = setTimeout(() => typeQuote(text, author, index+1), delay);
+  } else {
+    sticker.style.top = "0px";
+    stickerImg.src = "zhirin_closed.png";
+    authorEl.textContent = author;
+  }
+}
+
+// Инициализация
+typeQuote(quotes.ru, authors.ru);
+
+// Переключение языка
+translateBtn.onclick = () => {
+  isEnglish = !isEnglish;
+  translateBtn.textContent = isEnglish ? "Translate to Russian" : "Translate to English";
+  if (typingTimeout) clearTimeout(typingTimeout);
+  typeQuote(isEnglish ? quotes.en : quotes.ru, isEnglish ? authors.en : authors.ru);
+};
+
+// --- Аудио ---
+playBtnSmall.onclick = () => {
+  if (audio.paused) audio.play();
+  else audio.pause();
+};
+
+audio.onloadedmetadata = () => slider.max = audio.duration;
+audio.ontimeupdate = () => {
+  slider.value = audio.currentTime;
+  const minutes = Math.floor(audio.currentTime / 60);
+  const seconds = Math.floor(audio.currentTime % 60);
+  timeDisplay.textContent = `${minutes}:${seconds.toString().padStart(2,'0')}`;
+};
+slider.oninput = () => audio.currentTime = slider.value;
+
+audio.addEventListener('play', () => playBtnSmall.innerHTML = '<span class="icon-pause"></span>');
+audio.addEventListener('pause', () => playBtnSmall.innerHTML = '<span class="icon-play"></span>');
+</script>
+
+</body>
+</html>
